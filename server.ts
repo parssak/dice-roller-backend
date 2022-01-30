@@ -79,7 +79,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-httpServer.listen(8080);
+httpServer.listen(process.env.PORT || 8080);
 httpServer.on("listening", () => {
-  console.info("listening on port 8080");
+  console.log(`Listening on ${httpServer.address()}`);
 });
