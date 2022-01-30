@@ -20,6 +20,7 @@ interface User {
   name: string;
   type: "player" | "house" | "unset";
   score: 0;
+  turn_index: number;
 }
 
 interface RollPayload {
@@ -41,6 +42,7 @@ const getDefaultUser = (id: string): User => ({
   name: "anonymous",
   type: "unset",
   score: 0,
+  turn_index: users.size,
 });
 
 io.on("connection", (socket) => {
@@ -72,6 +74,11 @@ io.on("connection", (socket) => {
   socket.on("roll", (payload: [RollPayload, RollPayload, RollPayload]) => {
     const [dice_1, dice_2, dice_3] = payload;
     sendToAll("roll", [dice_1, dice_2, dice_3]);
+  });
+
+  socket.on("roll-result", (payload: any) => {
+    const [dice_1, dice_2, dice_3] = payload;
+    sendToAll("roll-result", [dice_1, dice_2, dice_3]);
   });
 });
 
