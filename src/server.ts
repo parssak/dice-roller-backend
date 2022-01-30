@@ -75,6 +75,10 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
 httpServer.listen(5656);
 httpServer.on("listening", () => {
   console.info("listening on port 5656");
