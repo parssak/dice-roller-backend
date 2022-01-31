@@ -46,7 +46,7 @@ const getNextAvailableTurnIndex = (): number => {
   const max_player_turn_index = Math.max(...player_turn_indexes);
   // check if -Infinity is max_player_turn_index
   if (max_player_turn_index === -Infinity) {
-    return 0;
+    return players.length ?? 0;
   }
   return max_player_turn_index + 1;
 };
@@ -58,6 +58,8 @@ const getDefaultUser = (id: string): User => ({
   score: 0,
   turn_index: getNextAvailableTurnIndex(),
 });
+
+let most_recent_update: any = {};
 
 io.on("connection", (socket) => {
   users.set(socket.id, getDefaultUser(socket.id));
@@ -102,13 +104,8 @@ io.on("connection", (socket) => {
 
   socket.on("roll-result", (payload: any) => {
     console.debug(payload, current_turn);
-    if (payload.turn !== current_turn) {
-      sendToAll("turn", current_turn);
-      return;
-    }
     console.debug("accepted!");
     const [dice_1, dice_2, dice_3] = payload.roll;
-    // find next available turn
     const next_turn_index = (current_turn + 1) % getPlayers().length;
     current_turn = next_turn_index;
     sendToAll("roll-result", [dice_1, dice_2, dice_3]);
@@ -118,6 +115,13 @@ io.on("connection", (socket) => {
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
+});
+
+app.get("/api/game", (req, res) => {
+  res.send({
+    users: [...users.values()],
+    turn: current_turn,
+  });
 });
 
 httpServer.listen(process.env.PORT || 8080);
