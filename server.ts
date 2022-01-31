@@ -32,9 +32,23 @@ interface RollPayload {
 }
 
 const users: Map<string, User> = new Map();
+let current_turn = 0;
 
 const sendToAll = (key: string, message: any) => {
   io.emit(key, message);
+};
+
+const getPlayers = () => [...users.values()].filter((user) => user.type === "player");
+
+const getNextAvailableTurnIndex = (): number => {
+  const players = getPlayers();
+  const player_turn_indexes = players.map((player) => player.turn_index);
+  const max_player_turn_index = Math.max(...player_turn_indexes);
+  // check if -Infinity is max_player_turn_index
+  if (max_player_turn_index === -Infinity) {
+    return 0;
+  }
+  return max_player_turn_index + 1;
 };
 
 const getDefaultUser = (id: string): User => ({
@@ -42,7 +56,7 @@ const getDefaultUser = (id: string): User => ({
   name: "anonymous",
   type: "unset",
   score: 0,
-  turn_index: users.size,
+  turn_index: getNextAvailableTurnIndex(),
 });
 
 io.on("connection", (socket) => {
@@ -51,6 +65,24 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     users.delete(socket.id);
+    // remove all unset users
+    users.forEach((user, id) => {
+      if (user.type === "unset") {
+        users.delete(id);
+      }
+    });
+
+    // reset turn indexes
+    const players = getPlayers();
+    players.forEach((player, index) => {
+      users.set(player._id, {
+        ...player,
+        turn_index: index,
+      });
+    });
+
+    console.debug("sendings pruned users");
+
     sendToAll("users", JSON.stringify([...users.values()]));
   });
 
@@ -63,22 +95,24 @@ io.on("connection", (socket) => {
     sendToAll("users", JSON.stringify([...users.values()]));
   });
 
-  socket.on("action", (payload: any) => {
-    const user = users.get(socket.id);
-    if (!user) {
-      return;
-    }
-    sendToAll("users", JSON.stringify([...users.values()]));
-  });
-
   socket.on("roll", (payload: [RollPayload, RollPayload, RollPayload]) => {
     const [dice_1, dice_2, dice_3] = payload;
     sendToAll("roll", [dice_1, dice_2, dice_3]);
   });
 
   socket.on("roll-result", (payload: any) => {
-    const [dice_1, dice_2, dice_3] = payload;
+    console.debug(payload, current_turn);
+    if (payload.turn !== current_turn) {
+      sendToAll("turn", current_turn);
+      return;
+    }
+    console.debug("accepted!");
+    const [dice_1, dice_2, dice_3] = payload.roll;
+    // find next available turn
+    const next_turn_index = (current_turn + 1) % getPlayers().length;
+    current_turn = next_turn_index;
     sendToAll("roll-result", [dice_1, dice_2, dice_3]);
+    sendToAll("turn", current_turn);
   });
 });
 
