@@ -33,6 +33,7 @@ interface RollPayload {
 
 const users: Map<string, User> = new Map();
 let current_turn = 0;
+const scores: Map<number, number> = new Map();
 
 const sendToAll = (key: string, message: any) => {
   io.emit(key, message);
@@ -83,8 +84,6 @@ io.on("connection", (socket) => {
       });
     });
 
-    console.debug("sendings pruned users");
-
     sendToAll("users", JSON.stringify([...users.values()]));
   });
 
@@ -103,13 +102,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("roll-result", (payload: any) => {
-    console.debug(payload, current_turn);
-    console.debug("accepted!");
     const [dice_1, dice_2, dice_3] = payload.roll;
-    const next_turn_index = (current_turn + 1) % getPlayers().length;
-    current_turn = next_turn_index;
-    sendToAll("roll-result", [dice_1, dice_2, dice_3]);
-    sendToAll("turn", current_turn);
+    scores.set(payload.turn, payload);
+    
+    const scoresObj: Record<string, any> = {};
+    scores.forEach((score, turn) => {
+      scoresObj[`${turn}`] = score;
+    });
+    console.debug(scoresObj)
+
+    sendToAll("roll-result", JSON.stringify(scoresObj));
+    if (current_turn === payload.turn) {
+      const next_turn_index = (current_turn + 1) % getPlayers().length;
+      current_turn = next_turn_index;
+      sendToAll("turn", current_turn);
+    }
   });
 });
 
