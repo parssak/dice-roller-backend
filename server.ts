@@ -60,7 +60,6 @@ const getDefaultUser = (id: string): User => ({
   turn_index: getNextAvailableTurnIndex(),
 });
 
-let most_recent_update: any = {};
 
 io.on("connection", (socket) => {
   users.set(socket.id, getDefaultUser(socket.id));
@@ -77,6 +76,9 @@ io.on("connection", (socket) => {
 
     // reset turn indexes
     const players = getPlayers();
+
+    if (players.length > current_turn - 1) current_turn = 0;
+    
     players.forEach((player, index) => {
       users.set(player._id, {
         ...player,
